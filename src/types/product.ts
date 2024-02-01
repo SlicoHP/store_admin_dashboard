@@ -5,9 +5,3 @@ export type Product = {
   description: string
   images: string[]
 }
-
-export type Category = {
-  id: number
-  name: string
-  image: string
-}

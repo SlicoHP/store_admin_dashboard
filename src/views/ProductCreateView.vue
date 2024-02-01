@@ -1,10 +1,13 @@
 <script lang="ts" setup>
 import { useFetch } from '@vueuse/core';
 import { computed, ref, type Ref } from 'vue';
-import type { Category } from '@/types/product'
+import type { Product } from '@/types/product'
 import { useRouter } from 'vue-router';
+import { useProductHistory } from '@/stores/productHistory';
+import type { Category } from '@/types/category';
 
 const router = useRouter();
+const productHistoryStore = useProductHistory();
 
 const url: Ref<string> = ref(`https://api.escuelajs.co/api/v1/categories`)
 const categories: Ref<Category[]> = ref([])
@@ -29,26 +32,42 @@ const { onFetchResponse, onFetchError } = useFetch(url)
 
 onFetchResponse(async (response) => {
     const data = await response.json();
-    categories.value = data.sort(function (a: { name: string }, b: { name: string }) {
-        return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-    })
+    categories.value = bubbleSortCategories(data)
 })
 
 onFetchError((error) => {
     console.error(error)
 })
 
+function bubbleSortCategories(arr: Category[]) {
+    const n = arr.length;
+
+    for (let i = 0; i < n - 1; i++) {
+        for (let j = 0; j < n - 1 - i; j++) {
+            if (arr[j].name > arr[j + 1].name) {
+                const temp = arr[j].name;
+                arr[j].name = arr[j + 1].name;
+                arr[j + 1].name = temp;
+            }
+        }
+    }
+
+    return arr;
+}
+
 async function addProduct() {
 
-    const { error } = await useFetch('https://api.escuelajs.co/api/v1/products/').post({
+    const { error, data } = await useFetch('https://api.escuelajs.co/api/v1/products/').post({
         ...productData.value,
-    })
+    }).json()
 
     if (error.value) {
         console.error(error)
         errorMessage.value = true
         return
     }
+
+    productHistoryStore.addHistoryEntrie(data as Partial<Product>);
 
     router.push({ name: 'products' })
 }
